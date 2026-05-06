@@ -4,82 +4,116 @@ import pandas as pd
 # Page Configuration
 st.set_page_config(page_title="Melaka Cataract Guide 2026", layout="wide")
 
-# --- CUSTOM CSS FOR MINIMALIST LOOK ---
-# Fixed the 'unsafe_allow_html' argument here
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
     .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    h1 { color: #2c3e50; }
+    .stAlert { border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("👁️ Melaka Cataract Surgery Guide & Estimator")
-st.write("A comprehensive guide for elderly cataract treatment in Melaka.")
+st.title("👁️ Melaka Cataract Guide & Cost Estimator")
 
 # --- DATA DEFINITIONS ---
-tech_options = {
-    "Standard Phacoemulsification": 4200,
-    "Laser-Assisted (FLACS)": 7500,
-    "Extracapsular (ECCE)": 3200
+
+# Hospital Pricing Multipliers (Base Cost for Standard Care)
+hospital_data = {
+    "ISEC Melaka (SSEC)": {"base": 3800, "rating": "4.9/5", "dr": "Dr. Robert Yeo"},
+    "Pantai Hospital Ayer Keroh": {"base": 4500, "rating": "4.8/5", "dr": "Dr. Liu Han Seng"},
+    "Oriental Melaka Straits": {"base": 4000, "rating": "4.7/5", "dr": "Dr. Ang Wen Jeat"},
+    "Putra Specialist Hospital": {"base": 3900, "rating": "4.8/5", "dr": "Datin Dr. Kasthuri"},
+    "Mahkota Medical Centre": {"base": 4600, "rating": "4.6/5", "dr": "Dr. Liau Kok Liang"}
 }
 
-lens_options = {
-    "Monofocal (Standard)": 0,
-    "Toric (Astigmatism)": 2000,
-    "Multifocal/Trifocal": 4500,
-    "EDOF": 3500
+# Technique Definitions & Costs
+tech_info = {
+    "Standard Phaco": {
+        "price": 0, 
+        "def": "The gold standard. Uses ultrasound to break up the cataract. Requires a small manual incision."
+    },
+    "Laser-Assisted (FLACS)": {
+        "price": 3000, 
+        "def": "Uses a femtosecond laser for incisions and softening the cataract. Offers higher precision and faster healing."
+    }
+}
+
+# Lens Definitions & Costs
+lens_info = {
+    "Monofocal (Standard)": {
+        "price": 0, 
+        "def": "Provides clear vision at one distance (usually far). Reading glasses will still be needed."
+    },
+    "Toric (Astigmatism)": {
+        "price": 1800, 
+        "def": "Designed for patients with astigmatism to ensure distance vision is sharp without glasses."
+    },
+    "Multifocal / Trifocal": {
+        "price": 4000, 
+        "def": "Provides clear vision at near, intermediate, and far distances. Aim is to be glasses-free."
+    },
+    "EDOF (Extended Depth)": {
+        "price": 3200, 
+        "def": "Provides a continuous range of high-quality vision from distance to intermediate (computer) work."
+    }
 }
 
 # --- SIDEBAR ESTIMATOR ---
-st.sidebar.header("💰 Cost Estimator")
-num_eyes = st.sidebar.radio("Number of Eyes", [1, 2], index=0)
-selected_tech = st.sidebar.selectbox("Surgical Technique", list(tech_options.keys()))
-selected_lens = st.sidebar.selectbox("Intraocular Lens (IOL) Type", list(lens_options.keys()))
+st.sidebar.header("📊 Personalized Estimator")
 
-# Calculation logic
-base_price = tech_options[selected_tech]
-lens_price = lens_options[selected_lens]
-total_est = (base_price + lens_price) * num_eyes
+selected_hosp = st.sidebar.selectbox("Select Hospital/Doctor", list(hospital_data.keys()))
+num_eyes = st.sidebar.radio("Number of Eyes", [1, 2], index=0)
+selected_tech = st.sidebar.selectbox("Surgical Technique", list(tech_info.keys()))
+selected_lens = st.sidebar.selectbox("Lens Type", list(lens_info.keys()))
+
+# --- CALCULATION ---
+h_base = hospital_data[selected_hosp]["base"]
+t_extra = tech_info[selected_tech]["price"]
+l_extra = lens_info[selected_lens]["price"]
+
+total_per_eye = h_base + t_extra + l_extra
+grand_total = total_per_eye * num_eyes
 
 st.sidebar.markdown("---")
-st.sidebar.metric("Estimated Total", f"RM {total_est:,}")
-st.sidebar.info("Prices are estimates. Request a 'Global Package' from the hospital for exact figures.")
+st.sidebar.metric("Estimated Total", f"RM {grand_total:,}")
+st.sidebar.caption(f"Based on {selected_hosp} typical rates.")
 
 # --- MAIN INTERFACE ---
-tab1, tab2, tab3 = st.tabs(["🏥 Recommended Specialists", "📋 Detailed Costs", "🕒 Recovery & Tips"])
+tab1, tab2, tab3 = st.tabs(["📋 Selection Details", "🏥 Hospital Directory", "💡 Definitions Guide"])
 
 with tab1:
-    st.subheader("Top Eye Specialists in Melaka")
-    doctors_df = pd.DataFrame([
-        {"Hospital": "ISEC Melaka", "Specialist": "Dr. Robert Yeo", "Rating": "4.9/5", "Notes": "Highly experienced, dedicated eye center."},
-        {"Hospital": "Pantai Ayer Keroh", "Specialist": "Dr. Liu Han Seng", "Rating": "4.8/5", "Notes": "Great facilities, excellent post-op care."},
-        {"Hospital": "Oriental Melaka", "Specialist": "Dr. Ang Wen Jeat", "Rating": "4.7/5", "Notes": "Modern medical center with all-in packages."},
-        {"Hospital": "Putra Specialist", "Specialist": "Datin Dr. Kasthuri", "Rating": "4.8/5", "Notes": "Very thorough with elderly patients."}
-    ])
-    st.table(doctors_df)
-
-with tab2:
+    st.subheader("Your Selection Breakdown")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 1. Technique Costs (Per Eye)")
-        st.dataframe(pd.DataFrame(tech_options.items(), columns=["Technique", "Price (RM)"]))
+        st.write(f"**Hospital:** {selected_hosp}")
+        st.write(f"**Lead Specialist:** {hospital_data[selected_hosp]['dr']}")
+        st.write(f"**Technique:** {selected_tech}")
     with col2:
-        st.markdown("### 2. Lens Upgrades")
-        st.dataframe(pd.DataFrame(lens_options.items(), columns=["Lens Type", "Add-on (RM)"]))
+        st.write(f"**Lens Choice:** {selected_lens}")
+        st.write(f"**Total Eyes:** {num_eyes}")
+        st.write(f"**Est. Price per Eye:** RM {total_per_eye:,}")
     
-    st.markdown("### 3. Typical 'Hidden' Costs")
-    st.write("""
-    - **Pre-op Biometry (Measurement):** RM 200 - RM 400
-    - **Post-op Medication (Drops):** RM 100 - RM 250
-    - **Follow-up Consultations:** Usually RM 150 per visit (typically 3 visits needed).
-    """)
+    st.info("**Standard Package Inclusions:** Most Melaka hospitals include the surgeon fee, basic OT charges, and the first follow-up in this price.")
+
+with tab2:
+    st.subheader("Hospital & Specialist Overview")
+    h_df = pd.DataFrame([
+        {"Hospital": k, "Primary Specialist": v["dr"], "Rating": v["base"], "Base Price (Est)": f"RM {v['base']}"} 
+        for k, v in hospital_data.items()
+    ])
+    st.table(h_df)
 
 with tab3:
-    st.subheader("Post-Surgery Checklist")
-    st.write("Important steps for elderly patients:")
-    st.checkbox("Use eye shield during sleep for the first week.")
-    st.checkbox("Avoid getting tap water in the eye for 1 month.")
-    st.checkbox("Strictly follow the antibiotic/steroid eye drop schedule.")
-    st.checkbox("No heavy lifting or intense exercise for at least 2 weeks.")
-    st.warning("Contact the doctor immediately if there is sudden pain or loss of vision.")
+    st.subheader("Understanding Your Options")
+    
+    st.markdown("### 💉 Surgical Techniques")
+    for k, v in tech_info.items():
+        st.write(f"**{k}**: {v['def']}")
+        
+    st.markdown("---")
+    
+    st.markdown("### 👓 Lens Types (IOL)")
+    for k, v in lens_info.items():
+        st.write(f"**{k}**: {v['def']}")
+
+    st.warning("Note: The best lens for you depends on your eye health (cornea and retina). Always consult the specialist before finalizing a lens type.")
